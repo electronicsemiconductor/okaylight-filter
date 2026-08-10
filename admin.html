@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OKAYLIGHT LED 参数筛选器 - 后台管理</title>
+  <script src="./supabase.min.js" onerror="window.__supabaseLoadFailed=true;"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #f5f7fa;
+      color: #333;
+      line-height: 1.5;
+    }
+    .wrap { max-width: 1600px; margin: 0 auto; padding: 20px; }
+    header {
+      background: #fff;
+      border-radius: 8px;
+      padding: 20px 24px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    header h1 { font-size: 20px; color: #1a1a1a; }
+    header p { color: #666; font-size: 13px; margin-top: 4px; }
+    .btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+    }
+    .btn-primary { background: #1890ff; color: #fff; }
+    .btn-primary:hover { background: #40a9ff; }
+    .btn-danger { background: #ff4d4f; color: #fff; }
+    .btn-danger:hover { background: #ff7875; }
+    .btn-default { background: #fff; border: 1px solid #d9d9d9; color: #555; }
+    .btn-default:hover { border-color: #1890ff; color: #1890ff; }
+    .cat-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .cat-btn {
+      padding: 8px 16px;
+      border-radius: 6px;
+      border: 1px solid #e0e0e0;
+      background: #fff;
+      color: #555;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .cat-btn:hover { border-color: #1890ff; color: #1890ff; }
+    .cat-btn.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+    .panel {
+      background: #fff;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+    .table-wrap { overflow-x: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 10px 8px;
+      text-align: left;
+      border-bottom: 1px solid #f0f0f0;
+      white-space: nowrap;
+    }
+    th {
+      background: #fafafa;
+      font-weight: 600;
+    }
+    tr:hover td { background: #f6fbff; }
+    .actions button { margin-right: 6px; padding: 4px 10px; font-size: 12px; }
+    .modal-overlay {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      padding: 20px;
+    }
+    .modal {
+      background: #fff;
+      border-radius: 8px;
+      width: 100%;
+      max-width: 800px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    }
+    .modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid #eee;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h3 { font-size: 16px; }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #999;
+    }
+    .modal-body { padding: 20px; }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+    .form-group input, .form-group textarea, .form-group select {
+      padding: 8px 10px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      font-size: 14px;
+      outline: none;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: #1890ff; }
+    .form-group textarea { resize: vertical; min-height: 60px; }
+    .modal-footer {
+      padding: 12px 20px;
+      border-top: 1px solid #eee;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+    .login-box {
+      max-width: 400px;
+      margin: 80px auto;
+      background: #fff;
+      border-radius: 8px;
+      padding: 32px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.1);
+    }
+    .login-box h2 { margin-bottom: 20px; text-align: center; }
+    .login-box input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 16px;
+      border: 1px solid #d9d9d9;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    .login-box button { width: 100%; padding: 10px; }
+    .error-msg { color: #ff4d4f; font-size: 13px; margin-bottom: 12px; }
+    .success-msg { color: #52c41a; font-size: 13px; margin-bottom: 12px; }
+    .status-tip { padding: 10px 14px; border-radius: 6px; margin-bottom: 16px; font-size: 13px; }
+    .status-tip.error { background: #fff2f0; border: 1px solid #ffccc7; color: #cf1322; }
+    .status-tip.success { background: #f6ffed; border: 1px solid #b7eb8f; color: #389e0d; }
+    .status-tip.info { background: #e6f7ff; border: 1px solid #91d5ff; color: #096dd9; }
+    .empty-state { text-align: center; padding: 40px; color: #999; }
+    .loading { text-align: center; padding: 40px; color: #666; }
+    .upload-modal { max-width: 760px; }
+    .upload-controls { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-bottom: 14px; }
+    .upload-tip { font-size: 13px; color: #666; line-height: 1.7; background: #fafafa; border: 1px solid #eee; border-radius: 6px; padding: 12px 14px; margin-bottom: 14px; }
+    .upload-tip code { background: #f0f0f0; padding: 1px 5px; border-radius: 3px; }
+    .preview-wrap { max-height: 340px; overflow: auto; margin-top: 10px; border: 1px solid #eee; border-radius: 6px; }
+    .preview-wrap table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .preview-wrap th, .preview-wrap td { border: 1px solid #eee; padding: 6px 8px; text-align: left; white-space: nowrap; }
+    .preview-wrap th { background: #fafafa; position: sticky; top: 0; }
+    .preview-count { font-size: 13px; color: #1890ff; margin: 8px 0; }
+    .file-name { font-size: 13px; color: #555; margin-left: 8px; }
+    @media (max-width: 768px) {
+      .form-row { grid-template-columns: 1fr; }
+      .toolbar { flex-direction: column; align-items: flex-start; gap: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+<script>
+// ==================== 配置 ====================
+// OKAYLIGHT 项目 Supabase 配置（待用户建项目后替换）
+const SUPABASE_URL = 'https://qlxffqldjzfnmhvtazuo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_v8Izejn2bfY6RUUozBlDvg_MDkan1Pd';
+const ADMIN_PASSWORD = 'okaylight2024';
+let _supabaseClient = null;
+
+function initSupabaseClient() {
+  if (_supabaseClient) return true;
+  if (!SUPABASE_URL || !SUPABASE_KEY) return false;
+  if (window.__supabaseLoadFailed) return false;
+  if (window.supabase && window.supabase.createClient) {
+    try {
+      _supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      return true;
+    } catch (e) {
+      console.error('createClient 失败:', e);
+      return false;
+    }
+  }
+  return false;
+}
+initSupabaseClient();
+
+// ==================== 内嵌 Fallback 数据 ====================
+const FALLBACK_DATA = {
+  categories: [
+    {
+      id: 'led', name: '发光二极管/LED', display_name: '发光二极管/LED',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '发光二极管/LED', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'diode_config', name:'二极管配置', type:'checkbox'},
+            {key:'emission_color', name:'发光颜色', type:'checkbox'},
+            {key:'forward_current', name:'正向电流', type:'checkbox'},
+            {key:'forward_voltage', name:'正向压降(Vf)', type:'checkbox'},
+            {key:'power', name:'功率', type:'checkbox'},
+            {key:'wavelength', name:'波长', type:'checkbox'},
+            {key:'color_temp', name:'色温', type:'checkbox'},
+            {key:'luminous_intensity', name:'发光强度', type:'checkbox'},
+            {key:'viewing_angle', name:'发光角度', type:'checkbox'},
+            {key:'lens_color', name:'透镜颜色', type:'checkbox'},
+            {key:'tape_type', name:'载带方式', type:'checkbox'},
+            {key:'base_type', name:'灯头类型', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'uv_led', name: '紫外线LED(UVLED)', display_name: '紫外线LED(UVLED)',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '紫外线LED(UVLED)', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'peak_wavelength', name:'峰值波长', type:'checkbox'},
+            {key:'power_dissipation', name:'耗散功率(Pd)', type:'checkbox'},
+            {key:'forward_current', name:'正向电流', type:'checkbox'},
+            {key:'forward_voltage', name:'正向压降(Vf)', type:'checkbox'},
+            {key:'luminous_intensity', name:'发光强度', type:'checkbox'},
+            {key:'fwhm', name:'半波宽', type:'checkbox'},
+            {key:'esd_rating', name:'抗静电能力', type:'checkbox'},
+            {key:'reverse_voltage', name:'直流反向耐压(Vr)', type:'checkbox'},
+            {key:'reverse_current', name:'反向电流(Ir)', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'},
+            {key:'radiant_power', name:'辐射功率', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'cob', name: 'COB光源', display_name: 'COB光源',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: 'COB光源', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'emission_color', name:'发光颜色', type:'checkbox'},
+            {key:'forward_current', name:'正向电流', type:'checkbox'},
+            {key:'forward_voltage', name:'正向压降(Vf)', type:'checkbox'},
+            {key:'power', name:'功率', type:'checkbox'},
+            {key:'wavelength', name:'波长', type:'checkbox'},
+            {key:'color_temp', name:'色温', type:'checkbox'},
+            {key:'cri', name:'CRI显色指数', type:'checkbox'},
+            {key:'luminous_flux', name:'光通量(25℃)', type:'checkbox'},
+            {key:'viewing_angle', name:'发光角度', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'ir_emitter', name: '红外发射管', display_name: '红外发射管',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '红外发射管', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'forward_current', name:'正向电流', type:'checkbox'},
+            {key:'forward_voltage', name:'正向压降(Vf)', type:'checkbox'},
+            {key:'wavelength', name:'波长', type:'checkbox'},
+            {key:'radiant_intensity', name:'辐射强度(Ie)', type:'checkbox'},
+            {key:'viewing_angle', name:'视角', type:'checkbox'},
+            {key:'fwhm', name:'半波宽', type:'checkbox'},
+            {key:'power_dissipation', name:'耗散功率(Pd)', type:'checkbox'},
+            {key:'reverse_voltage', name:'直流反向耐压(Vr)', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'phototransistor', name: '光电晶体管', display_name: '光电晶体管',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '光电晶体管', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'transistor_type', name:'晶体管类型', type:'checkbox'},
+            {key:'peak_wavelength', name:'峰值波长', type:'checkbox'},
+            {key:'vceo', name:'集射极击穿电压(Vceo)', type:'checkbox'},
+            {key:'collector_current', name:'集电极电流(Ic)', type:'checkbox'},
+            {key:'viewing_angle', name:'视角', type:'checkbox'},
+            {key:'vce_sat', name:'集射极饱和电压(VCE(sat))', type:'checkbox'},
+            {key:'power_dissipation', name:'耗散功率(Pd)', type:'checkbox'},
+            {key:'dark_current', name:'暗电流', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'irm', name: '红外遥控接收头(IRM)', display_name: '红外遥控接收头(IRM)',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '红外遥控接收头(IRM)', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'receive_distance', name:'接收距离', type:'checkbox'},
+            {key:'center_frequency', name:'中心频率', type:'checkbox'},
+            {key:'receive_angle', name:'接收角度', type:'checkbox'},
+            {key:'working_voltage', name:'工作电压', type:'checkbox'},
+            {key:'working_current', name:'工作电流', type:'checkbox'},
+            {key:'power_dissipation', name:'耗散功率(Pd)', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'photodiode', name: '光电二极管', display_name: '光电二极管',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '光电二极管', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'peak_wavelength', name:'峰值波长', type:'checkbox'},
+            {key:'spectral_range', name:'频谱范围', type:'checkbox'},
+            {key:'receive_angle', name:'接收角度', type:'checkbox'},
+            {key:'reverse_voltage', name:'直流反向耐压(Vr)', type:'checkbox'},
+            {key:'power_dissipation', name:'耗散功率(Pd)', type:'checkbox'},
+            {key:'dark_current', name:'暗电流', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'laser_diode', name: '激光二极管', display_name: '激光二极管',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '激光二极管', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'dominant_wavelength', name:'主波长', type:'checkbox'},
+            {key:'conversion_efficiency', name:'转换效率', type:'checkbox'},
+            {key:'threshold_current', name:'阈值电流', type:'checkbox'},
+            {key:'esd_rating', name:'抗静电能力', type:'checkbox'},
+            {key:'working_voltage', name:'工作电压', type:'checkbox'},
+            {key:'working_current', name:'工作电流', type:'checkbox'},
+            {key:'emission_color', name:'发光颜色', type:'checkbox'},
+            {key:'horizontal_divergence', name:'水平散射角度', type:'checkbox'},
+            {key:'vertical_divergence', name:'垂直散射角度', type:'checkbox'},
+            {key:'output_power', name:'输出光功率', type:'checkbox'},
+            {key:'slope_efficiency', name:'斜率效率', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'rgb_led', name: 'RGB LED', display_name: 'RGB LED',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: 'RGB LED', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'diode_config', name:'二极管配置', type:'checkbox'},
+            {key:'esd_rating', name:'抗静电能力', type:'checkbox'},
+            {key:'viewing_angle', name:'发光角度', type:'checkbox'},
+            {key:'dominant_wavelength_g', name:'主波长-绿', type:'checkbox'},
+            {key:'dominant_wavelength_b', name:'主波长-蓝', type:'checkbox'},
+            {key:'dominant_wavelength_r', name:'主波长-红', type:'checkbox'},
+            {key:'base_type', name:'灯头类型', type:'checkbox'},
+            {key:'lens_color', name:'透镜颜色', type:'checkbox'},
+            {key:'tape_type', name:'载带方式', type:'checkbox'},
+            {key:'peak_wavelength_g', name:'峰值波长-绿', type:'checkbox'},
+            {key:'peak_wavelength_b', name:'峰值波长-蓝', type:'checkbox'},
+            {key:'peak_wavelength_r', name:'峰值波长-红', type:'checkbox'},
+            {key:'luminous_intensity_g', name:'发光强度-绿', type:'checkbox'},
+            {key:'luminous_intensity_b', name:'发光强度-蓝', type:'checkbox'},
+            {key:'luminous_intensity_r', name:'发光强度-红', type:'checkbox'},
+            {key:'forward_voltage_g', name:'正向压降(Vf)-绿', type:'checkbox'},
+            {key:'forward_voltage_b', name:'正向压降(Vf)-蓝', type:'checkbox'},
+            {key:'forward_voltage_r', name:'正向压降(Vf)-红', type:'checkbox'},
+            {key:'forward_current_g', name:'正向电流-绿', type:'checkbox'},
+            {key:'forward_current_b', name:'正向电流-蓝', type:'checkbox'},
+            {key:'forward_current_r', name:'正向电流-红', type:'checkbox'},
+            {key:'power_r', name:'功率-红', type:'checkbox'},
+            {key:'power_g', name:'功率-绿', type:'checkbox'},
+            {key:'power_b', name:'功率-蓝', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'rgb_led_ic', name: 'RGB LED(内置IC)', display_name: 'RGB LED(内置IC)',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: 'RGB LED(内置IC)', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'esd_rating', name:'抗静电能力', type:'checkbox'},
+            {key:'viewing_angle', name:'发光角度', type:'checkbox'},
+            {key:'working_voltage', name:'工作电压', type:'checkbox'},
+            {key:'static_current', name:'静态电流', type:'checkbox'},
+            {key:'pwm_frequency', name:'PWM频率', type:'checkbox'},
+            {key:'data_rate', name:'数据速率', type:'checkbox'},
+            {key:'dominant_wavelength_g', name:'主波长-绿', type:'checkbox'},
+            {key:'dominant_wavelength_b', name:'主波长-蓝', type:'checkbox'},
+            {key:'dominant_wavelength_r', name:'主波长-红', type:'checkbox'},
+            {key:'base_type', name:'灯头类型', type:'checkbox'},
+            {key:'lens_color', name:'透镜颜色', type:'checkbox'},
+            {key:'tape_type', name:'载带方式', type:'checkbox'},
+            {key:'peak_wavelength_g', name:'峰值波长-绿', type:'checkbox'},
+            {key:'peak_wavelength_b', name:'峰值波长-蓝', type:'checkbox'},
+            {key:'peak_wavelength_r', name:'峰值波长-红', type:'checkbox'},
+            {key:'luminous_intensity_g', name:'发光强度-绿', type:'checkbox'},
+            {key:'luminous_intensity_b', name:'发光强度-蓝', type:'checkbox'},
+            {key:'luminous_intensity_r', name:'发光强度-红', type:'checkbox'},
+            {key:'propagation_delay', name:'传输延迟', type:'checkbox'},
+            {key:'rise_time', name:'上升时间', type:'checkbox'},
+            {key:'fall_time', name:'下降时间', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'slot_photo_switch', name: '槽型光电开关(光电晶体管输出)', display_name: '槽型光电开关(光电晶体管输出)',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '槽型光电开关(光电晶体管输出)', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'slot_width', name:'槽宽', type:'checkbox'},
+            {key:'slit_width', name:'缝隙宽', type:'checkbox'},
+            {key:'forward_voltage', name:'正向压降(Vf)', type:'checkbox'},
+            {key:'peak_wavelength', name:'峰值波长', type:'checkbox'},
+            {key:'dark_current', name:'暗电流', type:'checkbox'},
+            {key:'load_voltage', name:'负载电压', type:'checkbox'},
+            {key:'load_current', name:'负载电流', type:'checkbox'},
+            {key:'rise_time', name:'上升时间(tr)', type:'checkbox'},
+            {key:'fall_time', name:'下降时间(tf)', type:'checkbox'},
+            {key:'pin_pitch', name:'脚间距', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'reflective_photo_switch', name: '反射式光电开关', display_name: '反射式光电开关',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '反射式光电开关', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'sensing_distance', name:'感应距离', type:'checkbox'},
+            {key:'receiver_type', name:'接收管类型', type:'checkbox'},
+            {key:'collector_current', name:'集电极电流(Ic)', type:'checkbox'},
+            {key:'vceo', name:'集射极击穿电压(Vceo)', type:'checkbox'},
+            {key:'vce_sat', name:'集射极饱和电压(Vce(sat))', type:'checkbox'},
+            {key:'wavelength', name:'波长', type:'checkbox'},
+            {key:'forward_voltage', name:'正向压降(Vf)', type:'checkbox'},
+            {key:'forward_current', name:'正向电流(If)', type:'checkbox'},
+            {key:'reverse_voltage', name:'直流反向耐压(Vr)', type:'checkbox'},
+            {key:'rise_time', name:'上升时间', type:'checkbox'},
+            {key:'fall_time', name:'下降时间', type:'checkbox'},
+            {key:'power_dissipation', name:'功耗(Pd)', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'led_driver', name: 'LED驱动', display_name: 'LED驱动',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: 'LED驱动', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'driver_type', name:'类型', type:'checkbox'},
+            {key:'topology', name:'拓扑结构', type:'checkbox'},
+            {key:'channel_count', name:'通道数', type:'checkbox'},
+            {key:'working_voltage_dc', name:'工作电压(DC)', type:'checkbox'},
+            {key:'working_voltage_ac', name:'工作电压(AC)', type:'checkbox'},
+            {key:'switching_frequency', name:'开关频率', type:'checkbox'},
+            {key:'switch_type', name:'开关管(内置/外置)', type:'checkbox'},
+            {key:'output_voltage', name:'输出电压', type:'checkbox'},
+            {key:'output_current', name:'输出电流', type:'checkbox'},
+            {key:'current_accuracy', name:'恒流精度', type:'checkbox'},
+            {key:'dimming', name:'调光', type:'checkbox'},
+            {key:'features', name:'功能特性', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'led_display', name: 'LED数码管', display_name: 'LED数码管',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: 'LED数码管', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'digit_count', name:'数码管位数', type:'checkbox'},
+            {key:'char_size', name:'字符尺寸(英寸)', type:'checkbox'},
+            {key:'display_type', name:'显示类型', type:'checkbox'},
+            {key:'led_polarity', name:'LED极性', type:'checkbox'},
+            {key:'emission_color', name:'发光颜色', type:'checkbox'},
+            {key:'luminous_intensity', name:'发光强度', type:'checkbox'},
+            {key:'power_dissipation', name:'耗散功率(Pd)', type:'checkbox'},
+            {key:'forward_voltage', name:'正向压降', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'led_protection', name: 'LED保护', display_name: 'LED保护',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: 'LED保护', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'trigger_voltage', name:'触发电压', type:'checkbox'},
+            {key:'leakage_current', name:'漏电流', type:'checkbox'},
+            {key:'hold_current', name:'保持电流(Ih)', type:'checkbox'},
+            {key:'on_state_voltage', name:'通态电压(Vt)', type:'checkbox'},
+            {key:'on_state_current', name:'通态电流(It)', type:'checkbox'},
+            {key:'features', name:'功能特性', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    },
+    {
+      id: 'tvs_esd', name: '静电和浪涌保护(TVS/ESD)', display_name: '静电和浪涌保护(TVS/ESD)',
+      kinds_config: {
+        kinds: [
+          { key: 'default', name: '静电和浪涌保护(TVS/ESD)', filters: [
+            {key:'package_spec', name:'封装/规格', type:'checkbox'},
+            {key:'device_type', name:'类型', type:'checkbox'},
+            {key:'channel_count', name:'通道数', type:'checkbox'},
+            {key:'polarity', name:'极性', type:'checkbox'},
+            {key:'vrwm', name:'反向截止电压(Vrwm)', type:'checkbox'},
+            {key:'vbr', name:'击穿电压(VBR)', type:'checkbox'},
+            {key:'reverse_current', name:'反向电流(Ir)', type:'checkbox'},
+            {key:'ipp', name:'峰值脉冲电流(Ipp)', type:'checkbox'},
+            {key:'clamp_voltage', name:'钳位电压', type:'checkbox'},
+            {key:'ppp', name:'峰值脉冲功率(Ppp)', type:'checkbox'},
+            {key:'cj', name:'Cj-结电容', type:'checkbox'},
+            {key:'protection_level', name:'防护等级', type:'checkbox'},
+            {key:'operating_temp', name:'工作温度', type:'checkbox'}
+          ]}
+        ]
+      }
+    }
+  ],
+  products: [
+    {id:1, category:'led', kind:'default', model:'OKL-0603-W', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'0603',diode_config:'单芯片',emission_color:'白光',forward_current:'20mA',forward_voltage:'3.0V',power:'0.06W',wavelength:'-',color_temp:'6000K',luminous_intensity:'2000mcd',viewing_angle:'120°',lens_color:'乳白',tape_type:'编带',base_type:'贴片',operating_temp:'-40℃~85℃'}, price:'0.08', image_url:'https://picsum.photos/seed/OKL0603W/300/300'},
+    {id:2, category:'led', kind:'default', model:'OKL-0805-R', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'0805',diode_config:'单芯片',emission_color:'红光',forward_current:'20mA',forward_voltage:'2.0V',power:'0.04W',wavelength:'620nm',color_temp:'-',luminous_intensity:'1500mcd',viewing_angle:'120°',lens_color:'红色',tape_type:'编带',base_type:'贴片',operating_temp:'-40℃~85℃'}, price:'0.06', image_url:'https://picsum.photos/seed/OKL0805R/300/300'},
+    {id:3, category:'led', kind:'default', model:'OKL-1206-B', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'1206',diode_config:'单芯片',emission_color:'蓝光',forward_current:'20mA',forward_voltage:'3.2V',power:'0.064W',wavelength:'470nm',color_temp:'-',luminous_intensity:'2500mcd',viewing_angle:'120°',lens_color:'蓝色',tape_type:'编带',base_type:'贴片',operating_temp:'-40℃~85℃'}, price:'0.10', image_url:'https://picsum.photos/seed/OKL1206B/300/300'},
+    {id:4, category:'led', kind:'default', model:'OKL-3528-WW', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3528',diode_config:'单芯片',emission_color:'暖白光',forward_current:'20mA',forward_voltage:'3.0V',power:'0.06W',wavelength:'-',color_temp:'3000K',luminous_intensity:'1800mcd',viewing_angle:'120°',lens_color:'乳白',tape_type:'编带',base_type:'贴片',operating_temp:'-40℃~85℃'}, price:'0.09', image_url:'https://picsum.photos/seed/OKL3528WW/300/300'},
+    {id:5, category:'led', kind:'default', model:'OKL-5050-W', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5050',diode_config:'单芯片',emission_color:'白光',forward_current:'60mA',forward_voltage:'3.2V',power:'0.2W',wavelength:'-',color_temp:'6500K',luminous_intensity:'8000mcd',viewing_angle:'120°',lens_color:'乳白',tape_type:'编带',base_type:'贴片',operating_temp:'-40℃~85℃'}, price:'0.15', image_url:'https://picsum.photos/seed/OKL5050W/300/300'},
+    {id:6, category:'led', kind:'default', model:'OKL-3MM-G-DIP', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3mm',diode_config:'单芯片',emission_color:'绿光',forward_current:'20mA',forward_voltage:'2.2V',power:'0.044W',wavelength:'525nm',color_temp:'-',luminous_intensity:'3000mcd',viewing_angle:'30°',lens_color:'绿色',tape_type:'盒装',base_type:'直插',operating_temp:'-40℃~85℃'}, price:'0.05', image_url:'https://picsum.photos/seed/OKL3MMGDIP/300/300'},
+    {id:7, category:'led', kind:'default', model:'OKL-5MM-Y-DIP', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5mm',diode_config:'单芯片',emission_color:'黄光',forward_current:'20mA',forward_voltage:'2.1V',power:'0.042W',wavelength:'590nm',color_temp:'-',luminous_intensity:'2000mcd',viewing_angle:'15°',lens_color:'黄色',tape_type:'盒装',base_type:'直插',operating_temp:'-40℃~85℃'}, price:'0.05', image_url:'https://picsum.photos/seed/OKL5MMYDIP/300/300'},
+    {id:8, category:'led', kind:'default', model:'OKL-2835-W', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'2835',diode_config:'单芯片',emission_color:'白光',forward_current:'60mA',forward_voltage:'3.0V',power:'0.18W',wavelength:'-',color_temp:'5000K',luminous_intensity:'6000mcd',viewing_angle:'120°',lens_color:'乳白',tape_type:'编带',base_type:'贴片',operating_temp:'-40℃~100℃'}, price:'0.12', image_url:'https://picsum.photos/seed/OKL2835W/300/300'},
+    {id:9, category:'uv_led', kind:'default', model:'OKL-UV-3535-365', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3535',peak_wavelength:'365nm',power_dissipation:'1.0W',forward_current:'350mA',forward_voltage:'3.4V',luminous_intensity:'-',fwhm:'12nm',esd_rating:'HBM 2000V',reverse_voltage:'5V',reverse_current:'10uA',operating_temp:'-40℃~85℃',radiant_power:'500mW'}, price:'1.85', image_url:'https://picsum.photos/seed/OKLUV3535365/300/300'},
+    {id:10, category:'uv_led', kind:'default', model:'OKL-UV-3535-385', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3535',peak_wavelength:'385nm',power_dissipation:'1.0W',forward_current:'350mA',forward_voltage:'3.4V',luminous_intensity:'-',fwhm:'12nm',esd_rating:'HBM 2000V',reverse_voltage:'5V',reverse_current:'10uA',operating_temp:'-40℃~85℃',radiant_power:'600mW'}, price:'1.65', image_url:'https://picsum.photos/seed/OKLUV3535385/300/300'},
+    {id:11, category:'uv_led', kind:'default', model:'OKL-UV-3535-395', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3535',peak_wavelength:'395nm',power_dissipation:'1.0W',forward_current:'350mA',forward_voltage:'3.4V',luminous_intensity:'-',fwhm:'13nm',esd_rating:'HBM 2000V',reverse_voltage:'5V',reverse_current:'10uA',operating_temp:'-40℃~85℃',radiant_power:'700mW'}, price:'1.45', image_url:'https://picsum.photos/seed/OKLUV3535395/300/300'},
+    {id:12, category:'uv_led', kind:'default', model:'OKL-UV-0603-405', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'0603',peak_wavelength:'405nm',power_dissipation:'0.12W',forward_current:'20mA',forward_voltage:'3.2V',luminous_intensity:'300mcd',fwhm:'15nm',esd_rating:'HBM 1000V',reverse_voltage:'5V',reverse_current:'5uA',operating_temp:'-40℃~85℃',radiant_power:'15mW'}, price:'0.35', image_url:'https://picsum.photos/seed/OKLUV0603405/300/300'},
+    {id:13, category:'uv_led', kind:'default', model:'OKL-UV-6868-395', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'6868',peak_wavelength:'395nm',power_dissipation:'3.0W',forward_current:'700mA',forward_voltage:'3.6V',luminous_intensity:'-',fwhm:'13nm',esd_rating:'HBM 4000V',reverse_voltage:'5V',reverse_current:'10uA',operating_temp:'-40℃~100℃',radiant_power:'1800mW'}, price:'3.85', image_url:'https://picsum.photos/seed/OKLUV6868395/300/300'},
+    {id:14, category:'cob', kind:'default', model:'OKL-COB-5W-WW', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'COB-1919',emission_color:'暖白光',forward_current:'150mA',forward_voltage:'33V',power:'5W',wavelength:'-',color_temp:'3000K',cri:'80',luminous_flux:'450lm',viewing_angle:'120°',operating_temp:'-40℃~85℃'}, price:'1.25', image_url:'https://picsum.photos/seed/OKLCOB5WWW/300/300'},
+    {id:15, category:'cob', kind:'default', model:'OKL-COB-10W-W', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'COB-2424',emission_color:'白光',forward_current:'250mA',forward_voltage:'40V',power:'10W',wavelength:'-',color_temp:'5000K',cri:'80',luminous_flux:'900lm',viewing_angle:'120°',operating_temp:'-40℃~85℃'}, price:'2.15', image_url:'https://picsum.photos/seed/OKLCOB10WW/300/300'},
+    {id:16, category:'cob', kind:'default', model:'OKL-COB-30W-WW', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'COB-2828',emission_color:'暖白光',forward_current:'600mA',forward_voltage:'50V',power:'30W',wavelength:'-',color_temp:'3000K',cri:'90',luminous_flux:'3000lm',viewing_angle:'120°',operating_temp:'-40℃~105℃'}, price:'4.85', image_url:'https://picsum.photos/seed/OKLCOB30WWW/300/300'},
+    {id:17, category:'cob', kind:'default', model:'OKL-COB-50W-CW', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'COB-4040',emission_color:'冷白光',forward_current:'1000mA',forward_voltage:'50V',power:'50W',wavelength:'-',color_temp:'6500K',cri:'80',luminous_flux:'5000lm',viewing_angle:'120°',operating_temp:'-40℃~105℃'}, price:'7.85', image_url:'https://picsum.photos/seed/OKLCOB50WCW/300/300'},
+    {id:18, category:'cob', kind:'default', model:'OKL-COB-3W-R', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'COB-1616',emission_color:'红光',forward_current:'350mA',forward_voltage:'8.5V',power:'3W',wavelength:'630nm',color_temp:'-',cri:'-',luminous_flux:'120lm',viewing_angle:'120°',operating_temp:'-40℃~85℃'}, price:'0.85', image_url:'https://picsum.photos/seed/OKLCOB3WR/300/300'},
+    {id:19, category:'ir_emitter', kind:'default', model:'OKL-IR-5MM-940', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5mm',forward_current:'20mA',forward_voltage:'1.2V',wavelength:'940nm',radiant_intensity:'15mW/sr',viewing_angle:'30°',fwhm:'45nm',power_dissipation:'0.1W',reverse_voltage:'5V',operating_temp:'-40℃~85℃'}, price:'0.08', image_url:'https://picsum.photos/seed/OKLIR5MM940/300/300'},
+    {id:20, category:'ir_emitter', kind:'default', model:'OKL-IR-5MM-850', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5mm',forward_current:'20mA',forward_voltage:'1.3V',wavelength:'850nm',radiant_intensity:'25mW/sr',viewing_angle:'30°',fwhm:'45nm',power_dissipation:'0.1W',reverse_voltage:'5V',operating_temp:'-40℃~85℃'}, price:'0.10', image_url:'https://picsum.photos/seed/OKLIR5MM850/300/300'},
+    {id:21, category:'ir_emitter', kind:'default', model:'OKL-IR-0603-940', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'0603',forward_current:'20mA',forward_voltage:'1.2V',wavelength:'940nm',radiant_intensity:'5mW/sr',viewing_angle:'40°',fwhm:'45nm',power_dissipation:'0.075W',reverse_voltage:'5V',operating_temp:'-40℃~85℃'}, price:'0.06', image_url:'https://picsum.photos/seed/OKLIR0603940/300/300'},
+    {id:22, category:'ir_emitter', kind:'default', model:'OKL-IR-3535-940', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3535',forward_current:'100mA',forward_voltage:'1.4V',wavelength:'940nm',radiant_intensity:'60mW/sr',viewing_angle:'60°',fwhm:'45nm',power_dissipation:'0.5W',reverse_voltage:'5V',operating_temp:'-40℃~100℃'}, price:'0.28', image_url:'https://picsum.photos/seed/OKLIR3535940/300/300'},
+    {id:23, category:'ir_emitter', kind:'default', model:'OKL-IR-3MM-940', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3mm',forward_current:'20mA',forward_voltage:'1.2V',wavelength:'940nm',radiant_intensity:'10mW/sr',viewing_angle:'20°',fwhm:'45nm',power_dissipation:'0.1W',reverse_voltage:'5V',operating_temp:'-40℃~85℃'}, price:'0.07', image_url:'https://picsum.photos/seed/OKLIR3MM940/300/300'},
+    {id:24, category:'phototransistor', kind:'default', model:'OKL-PT-3MM-NPN', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3mm',transistor_type:'NPN',peak_wavelength:'940nm',vceo:'30V',collector_current:'20mA',viewing_angle:'20°',vce_sat:'0.4V',power_dissipation:'0.1W',dark_current:'100nA',operating_temp:'-40℃~85℃'}, price:'0.12', image_url:'https://picsum.photos/seed/OKLPT3MMNPN/300/300'},
+    {id:25, category:'phototransistor', kind:'default', model:'OKL-PT-5MM-NPN', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5mm',transistor_type:'NPN',peak_wavelength:'940nm',vceo:'30V',collector_current:'20mA',viewing_angle:'30°',vce_sat:'0.4V',power_dissipation:'0.1W',dark_current:'100nA',operating_temp:'-40℃~85℃'}, price:'0.15', image_url:'https://picsum.photos/seed/OKLPT5MMNPN/300/300'},
+    {id:26, category:'phototransistor', kind:'default', model:'OKL-PT-0603-NPN', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'0603',transistor_type:'NPN',peak_wavelength:'940nm',vceo:'30V',collector_current:'20mA',viewing_angle:'40°',vce_sat:'0.4V',power_dissipation:'0.075W',dark_current:'100nA',operating_temp:'-40℃~85℃'}, price:'0.10', image_url:'https://picsum.photos/seed/OKLPT0603NPN/300/300'},
+    {id:27, category:'phototransistor', kind:'default', model:'OKL-PT-1206-DAR', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'1206',transistor_type:'达林顿',peak_wavelength:'940nm',vceo:'50V',collector_current:'50mA',viewing_angle:'30°',vce_sat:'1.0V',power_dissipation:'0.15W',dark_current:'100nA',operating_temp:'-40℃~85℃'}, price:'0.22', image_url:'https://picsum.photos/seed/OKLPT1206DAR/300/300'},
+    {id:28, category:'irm', kind:'default', model:'OKL-IRM-1838', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'IRM-1838',receive_distance:'18m',center_frequency:'38kHz',receive_angle:'±45°',working_voltage:'2.7-5.5V',working_current:'0.8mA',power_dissipation:'0.05W',operating_temp:'-25℃~85℃'}, price:'0.25', image_url:'https://picsum.photos/seed/OKLIRM1838/300/300'},
+    {id:29, category:'irm', kind:'default', model:'OKL-IRM-3638', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'IRM-3638',receive_distance:'20m',center_frequency:'38kHz',receive_angle:'±45°',working_voltage:'2.7-5.5V',working_current:'0.8mA',power_dissipation:'0.05W',operating_temp:'-25℃~85℃'}, price:'0.28', image_url:'https://picsum.photos/seed/OKLIRM3638/300/300'},
+    {id:30, category:'irm', kind:'default', model:'OKL-IRM-5638', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'IRM-5638',receive_distance:'15m',center_frequency:'38kHz',receive_angle:'±45°',working_voltage:'2.7-5.5V',working_current:'0.8mA',power_dissipation:'0.05W',operating_temp:'-25℃~85℃'}, price:'0.26', image_url:'https://picsum.photos/seed/OKLIRM5638/300/300'},
+    {id:31, category:'irm', kind:'default', model:'OKL-IRM-0038', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'IRM-0038',receive_distance:'10m',center_frequency:'38kHz',receive_angle:'±35°',working_voltage:'2.7-5.5V',working_current:'0.5mA',power_dissipation:'0.03W',operating_temp:'-25℃~85℃'}, price:'0.18', image_url:'https://picsum.photos/seed/OKLIRM0038/300/300'},
+    {id:32, category:'irm', kind:'default', model:'OKL-IRM-3838-SMD', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'IRM-3838-SMD',receive_distance:'15m',center_frequency:'38kHz',receive_angle:'±45°',working_voltage:'2.7-5.5V',working_current:'0.6mA',power_dissipation:'0.04W',operating_temp:'-25℃~85℃'}, price:'0.32', image_url:'https://picsum.photos/seed/OKLIRM3838SMD/300/300'},
+    {id:33, category:'photodiode', kind:'default', model:'OKL-PD-5MM-940', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5mm',peak_wavelength:'940nm',spectral_range:'400-1100nm',receive_angle:'30°',reverse_voltage:'30V',power_dissipation:'0.1W',dark_current:'30nA',operating_temp:'-40℃~85℃'}, price:'0.18', image_url:'https://picsum.photos/seed/OKLPD5MM940/300/300'},
+    {id:34, category:'photodiode', kind:'default', model:'OKL-PD-3MM-940', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3mm',peak_wavelength:'940nm',spectral_range:'400-1100nm',receive_angle:'20°',reverse_voltage:'30V',power_dissipation:'0.1W',dark_current:'30nA',operating_temp:'-40℃~85℃'}, price:'0.15', image_url:'https://picsum.photos/seed/OKLPD3MM940/300/300'},
+    {id:35, category:'photodiode', kind:'default', model:'OKL-PD-0603-940', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'0603',peak_wavelength:'940nm',spectral_range:'400-1100nm',receive_angle:'40°',reverse_voltage:'30V',power_dissipation:'0.075W',dark_current:'30nA',operating_temp:'-40℃~85℃'}, price:'0.12', image_url:'https://picsum.photos/seed/OKLPD0603940/300/300'},
+    {id:36, category:'photodiode', kind:'default', model:'OKL-PD-1206-850', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'1206',peak_wavelength:'850nm',spectral_range:'400-1100nm',receive_angle:'30°',reverse_voltage:'30V',power_dissipation:'0.1W',dark_current:'30nA',operating_temp:'-40℃~85℃'}, price:'0.15', image_url:'https://picsum.photos/seed/OKLPD1206850/300/300'},
+    {id:37, category:'laser_diode', kind:'default', model:'OKL-LD-650-5MW', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'TO-18',dominant_wavelength:'650nm',conversion_efficiency:'25%',threshold_current:'35mA',esd_rating:'HBM 500V',working_voltage:'2.2V',working_current:'40mA',emission_color:'红光',horizontal_divergence:'8°',vertical_divergence:'30°',output_power:'5mW',slope_efficiency:'0.3mW/mA',operating_temp:'-10℃~60℃'}, price:'0.85', image_url:'https://picsum.photos/seed/OKLLD6505MW/300/300'},
+    {id:38, category:'laser_diode', kind:'default', model:'OKL-LD-445-1W', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'TO-56',dominant_wavelength:'445nm',conversion_efficiency:'30%',threshold_current:'120mA',esd_rating:'HBM 500V',working_voltage:'4.5V',working_current:'350mA',emission_color:'蓝光',horizontal_divergence:'8°',vertical_divergence:'30°',output_power:'1000mW',slope_efficiency:'1.0mW/mA',operating_temp:'-10℃~60℃'}, price:'5.85', image_url:'https://picsum.photos/seed/OKLLD4451W/300/300'},
+    {id:39, category:'laser_diode', kind:'default', model:'OKL-LD-808-200MW', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'TO-18',dominant_wavelength:'808nm',conversion_efficiency:'40%',threshold_current:'60mA',esd_rating:'HBM 500V',working_voltage:'1.8V',working_current:'250mA',emission_color:'红外',horizontal_divergence:'8°',vertical_divergence:'30°',output_power:'200mW',slope_efficiency:'0.6mW/mA',operating_temp:'-10℃~60℃'}, price:'2.45', image_url:'https://picsum.photos/seed/OKLLD808200MW/300/300'},
+    {id:40, category:'laser_diode', kind:'default', model:'OKL-LD-520-50MW', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'TO-56',dominant_wavelength:'520nm',conversion_efficiency:'28%',threshold_current:'70mA',esd_rating:'HBM 500V',working_voltage:'2.2V',working_current:'140mA',emission_color:'绿光',horizontal_divergence:'8°',vertical_divergence:'30°',output_power:'50mW',slope_efficiency:'0.5mW/mA',operating_temp:'-10℃~60℃'}, price:'3.25', image_url:'https://picsum.photos/seed/OKLLD52050MW/300/300'},
+    {id:41, category:'laser_diode', kind:'default', model:'OKL-LD-650-1MW-3P', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3.3mm',dominant_wavelength:'650nm',conversion_efficiency:'20%',threshold_current:'25mA',esd_rating:'HBM 500V',working_voltage:'2.2V',working_current:'30mA',emission_color:'红光',horizontal_divergence:'6°',vertical_divergence:'35°',output_power:'1mW',slope_efficiency:'0.2mW/mA',operating_temp:'-10℃~60℃'}, price:'0.45', image_url:'https://picsum.photos/seed/OKLLD6501MW3P/300/300'},
+    {id:42, category:'rgb_led', kind:'default', model:'OKL-RGB-5050', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5050',diode_config:'3芯片共阳',esd_rating:'HBM 2000V',viewing_angle:'120°',dominant_wavelength_g:'525nm',dominant_wavelength_b:'470nm',dominant_wavelength_r:'620nm',base_type:'贴片',lens_color:'乳白',tape_type:'编带',peak_wavelength_g:'515nm',peak_wavelength_b:'465nm',peak_wavelength_r:'625nm',luminous_intensity_g:'3000mcd',luminous_intensity_b:'2500mcd',luminous_intensity_r:'2000mcd',forward_voltage_g:'3.2V',forward_voltage_b:'3.2V',forward_voltage_r:'2.0V',forward_current_g:'20mA',forward_current_b:'20mA',forward_current_r:'20mA',power_r:'0.04W',power_g:'0.064W',power_b:'0.064W',operating_temp:'-40℃~85℃'}, price:'0.18', image_url:'https://picsum.photos/seed/OKLRGB5050/300/300'},
+    {id:43, category:'rgb_led', kind:'default', model:'OKL-RGB-3528', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3528',diode_config:'3芯片共阴',esd_rating:'HBM 2000V',viewing_angle:'120°',dominant_wavelength_g:'525nm',dominant_wavelength_b:'470nm',dominant_wavelength_r:'620nm',base_type:'贴片',lens_color:'乳白',tape_type:'编带',peak_wavelength_g:'515nm',peak_wavelength_b:'465nm',peak_wavelength_r:'625nm',luminous_intensity_g:'2000mcd',luminous_intensity_b:'1800mcd',luminous_intensity_r:'1500mcd',forward_voltage_g:'3.0V',forward_voltage_b:'3.0V',forward_voltage_r:'2.0V',forward_current_g:'20mA',forward_current_b:'20mA',forward_current_r:'20mA',power_r:'0.04W',power_g:'0.06W',power_b:'0.06W',operating_temp:'-40℃~85℃'}, price:'0.12', image_url:'https://picsum.photos/seed/OKLRGB3528/300/300'},
+    {id:44, category:'rgb_led', kind:'default', model:'OKL-RGB-5050-CA', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5050',diode_config:'3芯片共阳',esd_rating:'HBM 2000V',viewing_angle:'120°',dominant_wavelength_g:'530nm',dominant_wavelength_b:'460nm',dominant_wavelength_r:'625nm',base_type:'贴片',lens_color:'透明',tape_type:'编带',peak_wavelength_g:'520nm',peak_wavelength_b:'455nm',peak_wavelength_r:'630nm',luminous_intensity_g:'3500mcd',luminous_intensity_b:'2800mcd',luminous_intensity_r:'2500mcd',forward_voltage_g:'3.2V',forward_voltage_b:'3.2V',forward_voltage_r:'2.0V',forward_current_g:'20mA',forward_current_b:'20mA',forward_current_r:'20mA',power_r:'0.04W',power_g:'0.064W',power_b:'0.064W',operating_temp:'-40℃~85℃'}, price:'0.20', image_url:'https://picsum.photos/seed/OKLRGB5050CA/300/300'},
+    {id:45, category:'rgb_led', kind:'default', model:'OKL-RGB-1206', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'1206',diode_config:'3芯片共阴',esd_rating:'HBM 2000V',viewing_angle:'120°',dominant_wavelength_g:'525nm',dominant_wavelength_b:'470nm',dominant_wavelength_r:'620nm',base_type:'贴片',lens_color:'乳白',tape_type:'编带',peak_wavelength_g:'515nm',peak_wavelength_b:'465nm',peak_wavelength_r:'625nm',luminous_intensity_g:'1500mcd',luminous_intensity_b:'1200mcd',luminous_intensity_r:'1000mcd',forward_voltage_g:'3.0V',forward_voltage_b:'3.0V',forward_voltage_r:'2.0V',forward_current_g:'20mA',forward_current_b:'20mA',forward_current_r:'20mA',power_r:'0.04W',power_g:'0.06W',power_b:'0.06W',operating_temp:'-40℃~85℃'}, price:'0.10', image_url:'https://picsum.photos/seed/OKLRGB1206/300/300'},
+    {id:46, category:'rgb_led', kind:'default', model:'OKL-RGB-5MM-DIP', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5mm',diode_config:'3芯片共阴',esd_rating:'HBM 2000V',viewing_angle:'30°',dominant_wavelength_g:'525nm',dominant_wavelength_b:'470nm',dominant_wavelength_r:'620nm',base_type:'直插',lens_color:'乳白',tape_type:'盒装',peak_wavelength_g:'515nm',peak_wavelength_b:'465nm',peak_wavelength_r:'625nm',luminous_intensity_g:'4000mcd',luminous_intensity_b:'3000mcd',luminous_intensity_r:'2500mcd',forward_voltage_g:'3.2V',forward_voltage_b:'3.2V',forward_voltage_r:'2.0V',forward_current_g:'20mA',forward_current_b:'20mA',forward_current_r:'20mA',power_r:'0.04W',power_g:'0.064W',power_b:'0.064W',operating_temp:'-40℃~85℃'}, price:'0.15', image_url:'https://picsum.photos/seed/OKLRGB5MMDIP/300/300'},
+    {id:47, category:'rgb_led_ic', kind:'default', model:'OKL-WS2812-5050', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5050',esd_rating:'HBM 2000V',viewing_angle:'120°',working_voltage:'3.3-5V',static_current:'0.6mA',pwm_frequency:'400Hz',data_rate:'800Kbps',dominant_wavelength_g:'525nm',dominant_wavelength_b:'470nm',dominant_wavelength_r:'620nm',base_type:'贴片',lens_color:'乳白',tape_type:'编带',peak_wavelength_g:'515nm',peak_wavelength_b:'465nm',peak_wavelength_r:'625nm',luminous_intensity_g:'3000mcd',luminous_intensity_b:'2500mcd',luminous_intensity_r:'2000mcd',propagation_delay:'300ns',rise_time:'300ns',fall_time:'300ns',operating_temp:'-40℃~85℃'}, price:'0.25', image_url:'https://picsum.photos/seed/OKLWS28125050/300/300'},
+    {id:48, category:'rgb_led_ic', kind:'default', model:'OKL-SK6812-5050', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5050',esd_rating:'HBM 2000V',viewing_angle:'120°',working_voltage:'3.3-5V',static_current:'0.6mA',pwm_frequency:'1.2kHz',data_rate:'800Kbps',dominant_wavelength_g:'525nm',dominant_wavelength_b:'470nm',dominant_wavelength_r:'620nm',base_type:'贴片',lens_color:'乳白',tape_type:'编带',peak_wavelength_g:'515nm',peak_wavelength_b:'465nm',peak_wavelength_r:'625nm',luminous_intensity_g:'3500mcd',luminous_intensity_b:'2800mcd',luminous_intensity_r:'2200mcd',propagation_delay:'300ns',rise_time:'300ns',fall_time:'300ns',operating_temp:'-40℃~85℃'}, price:'0.28', image_url:'https://picsum.photos/seed/OKLSK68125050/300/300'},
+    {id:49, category:'rgb_led_ic', kind:'default', model:'OKL-WS2812-3528', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'3528',esd_rating:'HBM 2000V',viewing_angle:'120°',working_voltage:'3.3-5V',static_current:'0.4mA',pwm_frequency:'400Hz',data_rate:'800Kbps',dominant_wavelength_g:'525nm',dominant_wavelength_b:'470nm',dominant_wavelength_r:'620nm',base_type:'贴片',lens_color:'乳白',tape_type:'编带',peak_wavelength_g:'515nm',peak_wavelength_b:'465nm',peak_wavelength_r:'625nm',luminous_intensity_g:'2000mcd',luminous_intensity_b:'1800mcd',luminous_intensity_r:'1500mcd',propagation_delay:'300ns',rise_time:'300ns',fall_time:'300ns',operating_temp:'-40℃~85℃'}, price:'0.18', image_url:'https://picsum.photos/seed/OKLWS28123528/300/300'},
+    {id:50, category:'rgb_led_ic', kind:'default', model:'OKL-WS2811-5050-RGBW', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'5050',esd_rating:'HBM 2000V',viewing_angle:'120°',working_voltage:'5V',static_current:'0.8mA',pwm_frequency:'400Hz',data_rate:'800Kbps',dominant_wavelength_g:'525nm',dominant_wavelength_b:'470nm',dominant_wavelength_r:'620nm',base_type:'贴片',lens_color:'乳白',tape_type:'编带',peak_wavelength_g:'515nm',peak_wavelength_b:'465nm',peak_wavelength_r:'625nm',luminous_intensity_g:'3500mcd',luminous_intensity_b:'3000mcd',luminous_intensity_r:'2500mcd',propagation_delay:'300ns',rise_time:'300ns',fall_time:'300ns',operating_temp:'-40℃~85℃'}, price:'0.32', image_url:'https://picsum.photos/seed/OKLWS28115050RGBW/300/300'},
+    {id:51, category:'slot_photo_switch', kind:'default', model:'OKL-SLOT-2MM', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'EE-SX1105',slot_width:'2mm',slit_width:'0.5mm',forward_voltage:'1.2V',peak_wavelength:'940nm',dark_current:'100nA',load_voltage:'30V',load_current:'20mA',rise_time:'4us',fall_time:'3us',pin_pitch:'2.54mm',operating_temp:'-25℃~85℃'}, price:'0.35', image_url:'https://picsum.photos/seed/OKLSLOT2MM/300/300'},
+    {id:52, category:'slot_photo_switch', kind:'default', model:'OKL-SLOT-3MM', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'EE-SX1106',slot_width:'3mm',slit_width:'0.5mm',forward_voltage:'1.2V',peak_wavelength:'940nm',dark_current:'100nA',load_voltage:'30V',load_current:'20mA',rise_time:'4us',fall_time:'3us',pin_pitch:'2.54mm',operating_temp:'-25℃~85℃'}, price:'0.38', image_url:'https://picsum.photos/seed/OKLSLOT3MM/300/300'},
+    {id:53, category:'slot_photo_switch', kind:'default', model:'OKL-SLOT-5MM', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'EE-SX1107',slot_width:'5mm',slit_width:'1.0mm',forward_voltage:'1.2V',peak_wavelength:'940nm',dark_current:'100nA',load_voltage:'30V',load_current:'20mA',rise_time:'5us',fall_time:'4us',pin_pitch:'5.0mm',operating_temp:'-25℃~85℃'}, price:'0.42', image_url:'https://picsum.photos/seed/OKLSLOT5MM/300/300'},
+    {id:54, category:'slot_photo_switch', kind:'default', model:'OKL-SLOT-5MM-SMD', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'EE-SX4601',slot_width:'5mm',slit_width:'0.8mm',forward_voltage:'1.2V',peak_wavelength:'940nm',dark_current:'100nA',load_voltage:'30V',load_current:'20mA',rise_time:'3us',fall_time:'2us',pin_pitch:'2.54mm',operating_temp:'-25℃~85℃'}, price:'0.48', image_url:'https://picsum.photos/seed/OKLSLOT5MMSMD/300/300'},
+    {id:55, category:'reflective_photo_switch', kind:'default', model:'OKL-RFL-2MM', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'EE-1004',sensing_distance:'2mm',receiver_type:'光电晶体管',collector_current:'20mA',vceo:'30V',vce_sat:'0.4V',wavelength:'940nm',forward_voltage:'1.2V',forward_current:'20mA',reverse_voltage:'5V',rise_time:'5us',fall_time:'5us',power_dissipation:'0.1W',operating_temp:'-25℃~85℃'}, price:'0.32', image_url:'https://picsum.photos/seed/OKLRFL2MM/300/300'},
+    {id:56, category:'reflective_photo_switch', kind:'default', model:'OKL-RFL-5MM', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'EE-1005',sensing_distance:'5mm',receiver_type:'光电晶体管',collector_current:'20mA',vceo:'30V',vce_sat:'0.4V',wavelength:'940nm',forward_voltage:'1.2V',forward_current:'20mA',reverse_voltage:'5V',rise_time:'8us',fall_time:'8us',power_dissipation:'0.1W',operating_temp:'-25℃~85℃'}, price:'0.38', image_url:'https://picsum.photos/seed/OKLRFL5MM/300/300'},
+    {id:57, category:'reflective_photo_switch', kind:'default', model:'OKL-RFL-10MM', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'EE-1006',sensing_distance:'10mm',receiver_type:'光电达林顿',collector_current:'50mA',vceo:'50V',vce_sat:'1.0V',wavelength:'940nm',forward_voltage:'1.2V',forward_current:'20mA',reverse_voltage:'5V',rise_time:'15us',fall_time:'15us',power_dissipation:'0.15W',operating_temp:'-25℃~85℃'}, price:'0.45', image_url:'https://picsum.photos/seed/OKLRFL10MM/300/300'},
+    {id:58, category:'reflective_photo_switch', kind:'default', model:'OKL-RFL-3MM-SMD', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'EE-SX4602',sensing_distance:'3mm',receiver_type:'光电晶体管',collector_current:'20mA',vceo:'30V',vce_sat:'0.4V',wavelength:'940nm',forward_voltage:'1.2V',forward_current:'20mA',reverse_voltage:'5V',rise_time:'4us',fall_time:'4us',power_dissipation:'0.1W',operating_temp:'-25℃~85℃'}, price:'0.35', image_url:'https://picsum.photos/seed/OKLRFL3MMSMD/300/300'},
+    {id:59, category:'led_driver', kind:'default', model:'OKL-DRV-PT4115', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'SOT89-5',driver_type:'降压型',topology:'Buck',channel_count:'1',working_voltage_dc:'6-30V',working_voltage_ac:'-',switching_frequency:'500kHz',switch_type:'内置',output_voltage:'3-28V',output_current:'1.2A',current_accuracy:'±3%',dimming:'PWM',features:'过温保护/过流保护',operating_temp:'-40℃~125℃'}, price:'0.35', image_url:'https://picsum.photos/seed/OKLDRVPT4115/300/300'},
+    {id:60, category:'led_driver', kind:'default', model:'OKL-DRV-AMC7150', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'TO-252',driver_type:'降压型',topology:'Buck',channel_count:'1',working_voltage_dc:'4-40V',working_voltage_ac:'-',switching_frequency:'200kHz',switch_type:'内置',output_voltage:'3-38V',output_current:'1.5A',current_accuracy:'±5%',dimming:'PWM',features:'过温保护',operating_temp:'-40℃~125℃'}, price:'0.28', image_url:'https://picsum.photos/seed/OKLDRVAMC7150/300/300'},
+    {id:61, category:'led_driver', kind:'default', model:'OKL-DRV-LM3409', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'TSSOP-14',driver_type:'降压型',topology:'Buck',channel_count:'1',working_voltage_dc:'6-42V',working_voltage_ac:'-',switching_frequency:'1MHz',switch_type:'外置',output_voltage:'5-40V',output_current:'5A',current_accuracy:'±2%',dimming:'PWM/模拟',features:'过流保护/过温保护/EN使能',operating_temp:'-40℃~125℃'}, price:'0.85', image_url:'https://picsum.photos/seed/OKLDRVLM3409/300/300'},
+    {id:62, category:'led_driver', kind:'default', model:'OKL-DRV-PT4101', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'SOT23-6',driver_type:'升压型',topology:'Boost',channel_count:'1',working_voltage_dc:'2.5-5.5V',working_voltage_ac:'-',switching_frequency:'1.2MHz',switch_type:'内置',output_voltage:'3-26V',output_current:'0.5A',current_accuracy:'±3%',dimming:'PWM',features:'过流保护/欠压保护',operating_temp:'-40℃~85℃'}, price:'0.22', image_url:'https://picsum.photos/seed/OKLDRVPT4101/300/300'},
+    {id:63, category:'led_driver', kind:'default', model:'OKL-DRV-WS2811', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'SOP-8',driver_type:'恒流型',topology:'线性',channel_count:'3',working_voltage_dc:'6-7V',working_voltage_ac:'-',switching_frequency:'400Hz',switch_type:'内置',output_voltage:'3-6V',output_current:'18.5mA',current_accuracy:'±1%',dimming:'PWM',features:'内置振荡器/级联输出',operating_temp:'-40℃~85℃'}, price:'0.15', image_url:'https://picsum.photos/seed/OKLDRVWS2811/300/300'},
+    {id:64, category:'led_display', kind:'default', model:'OKL-DSP-1DIG-056-RED', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'0.56寸-1位',digit_count:'1',char_size:'0.56',display_type:'共阴',led_polarity:'共阴',emission_color:'红光',luminous_intensity:'3000mcd',power_dissipation:'0.4W',forward_voltage:'2.0V',operating_temp:'-40℃~85℃'}, price:'0.18', image_url:'https://picsum.photos/seed/OKLDSP1DIG056RED/300/300'},
+    {id:65, category:'led_display', kind:'default', model:'OKL-DSP-1DIG-056-GRN', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'0.56寸-1位',digit_count:'1',char_size:'0.56',display_type:'共阳',led_polarity:'共阳',emission_color:'绿光',luminous_intensity:'5000mcd',power_dissipation:'0.4W',forward_voltage:'2.2V',operating_temp:'-40℃~85℃'}, price:'0.20', image_url:'https://picsum.photos/seed/OKLDSP1DIG056GRN/300/300'},
+    {id:66, category:'led_display', kind:'default', model:'OKL-DSP-4DIG-056-RED', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'0.56寸-4位',digit_count:'4',char_size:'0.56',display_type:'共阴',led_polarity:'共阴',emission_color:'红光',luminous_intensity:'2500mcd',power_dissipation:'1.2W',forward_voltage:'2.0V',operating_temp:'-40℃~85℃'}, price:'0.55', image_url:'https://picsum.photos/seed/OKLDSP4DIG056RED/300/300'},
+    {id:67, category:'led_display', kind:'default', model:'OKL-DSP-2DIG-036-BLU', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'0.36寸-2位',digit_count:'2',char_size:'0.36',display_type:'共阳',led_polarity:'共阳',emission_color:'蓝光',luminous_intensity:'2000mcd',power_dissipation:'0.3W',forward_voltage:'3.2V',operating_temp:'-40℃~85℃'}, price:'0.28', image_url:'https://picsum.photos/seed/OKLDSP2DIG036BLU/300/300'},
+    {id:68, category:'led_display', kind:'default', model:'OKL-DSP-4DIG-036-WHT', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'0.36寸-4位',digit_count:'4',char_size:'0.36',display_type:'共阴',led_polarity:'共阴',emission_color:'白光',luminous_intensity:'3000mcd',power_dissipation:'0.8W',forward_voltage:'3.0V',operating_temp:'-40℃~85℃'}, price:'0.48', image_url:'https://picsum.photos/seed/OKLDSP4DIG036WHT/300/300'},
+    {id:69, category:'led_protection', kind:'default', model:'OKL-PRO-6V-SMD', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'SOD-323',trigger_voltage:'6V',leakage_current:'1uA',hold_current:'50mA',on_state_voltage:'1.5V',on_state_current:'200mA',features:'自恢复保险丝',operating_temp:'-40℃~85℃'}, price:'0.08', image_url:'https://picsum.photos/seed/OKLPRO6VSMD/300/300'},
+    {id:70, category:'led_protection', kind:'default', model:'OKL-PRO-9V-SMD', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'SOD-323',trigger_voltage:'9V',leakage_current:'1uA',hold_current:'100mA',on_state_voltage:'1.5V',on_state_current:'300mA',features:'自恢复保险丝',operating_temp:'-40℃~85℃'}, price:'0.10', image_url:'https://picsum.photos/seed/OKLPRO9VSMD/300/300'},
+    {id:71, category:'led_protection', kind:'default', model:'OKL-PRO-12V-DIP', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'DIP',trigger_voltage:'12V',leakage_current:'2uA',hold_current:'150mA',on_state_voltage:'2.0V',on_state_current:'500mA',features:'自恢复保险丝/过压保护',operating_temp:'-40℃~85℃'}, price:'0.15', image_url:'https://picsum.photos/seed/OKLPRO12VDIP/300/300'},
+    {id:72, category:'led_protection', kind:'default', model:'OKL-PRO-24V-SMD', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'SOD-123',trigger_voltage:'24V',leakage_current:'2uA',hold_current:'200mA',on_state_voltage:'2.5V',on_state_current:'800mA',features:'自恢复保险丝/过压保护',operating_temp:'-40℃~85℃'}, price:'0.18', image_url:'https://picsum.photos/seed/OKLPRO24VSMD/300/300'},
+    {id:73, category:'tvs_esd', kind:'default', model:'OKL-TVS-3V3-SOD323', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'SOD-323',device_type:'TVS',channel_count:'1',polarity:'单向',vrwm:'3.3V',vbr:'4.0V',reverse_current:'1uA',ipp:'10A',clamp_voltage:'5.5V',ppp:'150W',cj:'50pF',protection_level:'IEC61000-4-2 ±15kV',operating_temp:'-55℃~150℃'}, price:'0.06', image_url:'https://picsum.photos/seed/OKLTVS3V3SOD323/300/300'},
+    {id:74, category:'tvs_esd', kind:'default', model:'OKL-TVS-5V-SOD323', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'SOD-323',device_type:'TVS',channel_count:'1',polarity:'单向',vrwm:'5V',vbr:'6.0V',reverse_current:'1uA',ipp:'12A',clamp_voltage:'8.0V',ppp:'200W',cj:'40pF',protection_level:'IEC61000-4-2 ±15kV',operating_temp:'-55℃~150℃'}, price:'0.06', image_url:'https://picsum.photos/seed/OKLTVS5VSOD323/300/300'},
+    {id:75, category:'tvs_esd', kind:'default', model:'OKL-TVS-12V-SMA', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'SMA',device_type:'TVS',channel_count:'1',polarity:'单向',vrwm:'12V',vbr:'13.3V',reverse_current:'1uA',ipp:'16A',clamp_voltage:'19.9V',ppp:'400W',cj:'150pF',protection_level:'IEC61000-4-2 ±30kV',operating_temp:'-55℃~150℃'}, price:'0.12', image_url:'https://picsum.photos/seed/OKLTVS12VSMA/300/300'},
+    {id:76, category:'tvs_esd', kind:'default', model:'OKL-ESD-5V-SOT23', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'SOT-23',device_type:'ESD',channel_count:'2',polarity:'双向',vrwm:'5V',vbr:'6.0V',reverse_current:'0.5uA',ipp:'5A',clamp_voltage:'9.8V',ppp:'50W',cj:'5pF',protection_level:'IEC61000-4-2 ±8kV',operating_temp:'-55℃~150℃'}, price:'0.04', image_url:'https://picsum.photos/seed/OKLESD5VSOT23/300/300'},
+    {id:77, category:'tvs_esd', kind:'default', model:'OKL-ESD-12V-DFN', manufacturer:'OKAYLIGHT', spec_data:{package_spec:'DFN-2x2',device_type:'ESD',channel_count:'4',polarity:'双向',vrwm:'12V',vbr:'14V',reverse_current:'1uA',ipp:'6A',clamp_voltage:'22V',ppp:'80W',cj:'8pF',protection_level:'IEC61000-4-2 ±15kV',operating_temp:'-55℃~150℃'}, price:'0.08', image_url:'https://picsum.photos/seed/OKLESD12VDFN/300/300'}
+  ]
+};
+
+// ==================== 状态 ====================
+let state = {
+  loggedIn: false,
+  categories: FALLBACK_DATA.categories,
+  products: [],
+  currentCategoryId: 'led',
+  currentKindKey: '',
+  loading: true,
+  message: null,
+  messageType: null,
+  modal: null,
+  uploadModal: null,
+  uploadCategory: '',
+  uploadPreview: [],
+  uploadFileName: '',
+  readOnly: false
+};
+
+// ==================== 初始化 ====================
+function init() {
+  const saved = sessionStorage.getItem('okaylight_admin_login');
+  if (saved === '1') state.loggedIn = true;
+  render();
+  if (state.loggedIn) loadData();
+}
+
+async function loadData() {
+  state.loading = true;
+  state.readOnly = false;
+  render();
+
+  if (!SUPABASE_URL || !SUPABASE_KEY) {
+    state.categories = FALLBACK_DATA.categories;
+    state.products = FALLBACK_DATA.products.slice();
+    initCategoryAndKind();
+    state.loading = false;
+    showMessage('当前使用内嵌示例数据（本地模式，可编辑但刷新后会重置）。请在 admin.html 中填入 OKAYLIGHT 项目的 SUPABASE_URL 和 SUPABASE_KEY 后启用数据库持久化。', 'info');
+    render();
+    return;
+  }
+
+  if (!_supabaseClient) {
+    for (let i = 0; i < 30; i++) {
+      await new Promise(r => setTimeout(r, 100));
+      if (initSupabaseClient()) break;
+      if (window.__supabaseLoadFailed) break;
+    }
+  }
+  if (!_supabaseClient) {
+    const reason = window.__supabaseLoadFailed ? 'CDN 加载失败' : 'SDK 加载超时';
+    showMessage('Supabase 未就绪（' + reason + '），已切换到内嵌示例数据（只读）', 'error');
+    state.categories = FALLBACK_DATA.categories;
+    state.products = FALLBACK_DATA.products.slice();
+    initCategoryAndKind();
+    state.readOnly = true;
+    state.loading = false;
+    render();
+    return;
+  }
+  try {
+    const [{ data: cats, error: err1 }, { data: prods, error: err2 }] = await Promise.all([
+      _supabaseClient.from('categories').select('*'),
+      _supabaseClient.from('products').select('*')
+    ]);
+    if (err1) throw err1;
+    if (err2) throw err2;
+    state.categories = (cats || []).map(c => {
+      let kindsConfig = c.kinds_config;
+      if (!kindsConfig && c.config) {
+        if (Array.isArray(c.config.filters)) {
+          kindsConfig = { kinds: [{ key: 'default', name: c.name || c.display_name, filters: c.config.filters }] };
+        } else if (c.config.kinds) {
+          kindsConfig = c.config;
+        } else {
+          kindsConfig = { kinds: [{ key: 'default', name: c.name || c.display_name, filters: [] }] };
+        }
+      }
+      if (!kindsConfig) {
+        kindsConfig = { kinds: [{ key: 'default', name: c.name || c.display_name, filters: [] }] };
+      }
+      return {
+        ...c,
+        display_name: c.display_name || c.name,
+        kinds_config: kindsConfig
+      };
+    });
+    state.products = (prods || []).map(p => ({
+      ...p,
+      kind: p.kind || 'default'
+    }));
+    initCategoryAndKind();
+  } catch (e) {
+    console.error(e);
+    showMessage('数据库连接失败：' + e.message + '，已切换到内嵌示例数据（只读）', 'error');
+    state.categories = FALLBACK_DATA.categories;
+    state.products = FALLBACK_DATA.products.slice();
+    initCategoryAndKind();
+    state.readOnly = true;
+  }
+  state.loading = false;
+  render();
+}
+
+function initCategoryAndKind() {
+  if (!state.categories.length) return;
+  const cat = state.categories.find(c => c.id === state.currentCategoryId) || state.categories[0];
+  state.currentCategoryId = cat.id;
+  const kinds = cat.kinds_config?.kinds || [];
+  state.currentKindKey = kinds.length ? kinds[0].key : '';
+}
+
+function getCategory() {
+  return state.categories.find(c => c.id === state.currentCategoryId) || state.categories[0];
+}
+function getKinds() {
+  return getCategory()?.kinds_config?.kinds || [];
+}
+function getCurrentKind() {
+  return getKinds().find(k => k.key === state.currentKindKey) || getKinds()[0];
+}
+function getFilteredProducts() {
+  return state.products.filter(p => p.category === state.currentCategoryId && p.kind === state.currentKindKey);
+}
+
+function showMessage(text, type) {
+  state.message = text;
+  state.messageType = type;
+  render();
+  setTimeout(() => { state.message = null; render(); }, 6000);
+}
+
+// ==================== 登录 ====================
+function login(password) {
+  if (password === undefined) {
+    const input = document.getElementById('pwd');
+    password = input ? input.value : '';
+  }
+  if (password === ADMIN_PASSWORD) {
+    state.loggedIn = true;
+    sessionStorage.setItem('okaylight_admin_login', '1');
+    loadData();
+  } else {
+    showMessage('密码错误', 'error');
+    render();
+  }
+}
+function logout() {
+  state.loggedIn = false;
+  sessionStorage.removeItem('okaylight_admin_login');
+  render();
+}
+
+// ==================== 产品 CRUD ====================
+function openAddModal() {
+  const kind = getCurrentKind();
+  if (!kind) return;
+  state.modal = {
+    mode: 'add',
+    product: {
+      category: state.currentCategoryId,
+      kind: kind.key,
+      model: '',
+      manufacturer: '',
+      image_url: '',
+      price: '',
+      datasheet_url: '',
+      remarks: '',
+      spec_data: {}
+    }
+  };
+  render();
+}
+function openEditModal(product) {
+  state.modal = {
+    mode: 'edit',
+    product: { ...product, spec_data: { ...product.spec_data } }
+  };
+  render();
+}
+function closeModal() {
+  state.modal = null;
+  render();
+}
+function updateSpecField(key, value) {
+  state.modal.product.spec_data[key] = value;
+  render();
+}
+function updateProductField(key, value) {
+  state.modal.product[key] = value;
+  render();
+}
+async function saveProduct() {
+  const p = state.modal.product;
+  if (!p.model || !p.manufacturer) {
+    showMessage('型号和制造商为必填项', 'error');
+    return;
+  }
+  if (state.readOnly) {
+    showMessage('当前为只读模式，无法保存', 'error');
+    return;
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_KEY || !_supabaseClient) {
+    if (state.modal.mode === 'add') {
+      const newId = state.products.length ? Math.max(...state.products.map(x => x.id || 0)) + 1 : 1;
+      state.products.push({
+        id: newId,
+        category: p.category,
+        kind: p.kind,
+        model: p.model,
+        manufacturer: p.manufacturer,
+        spec_data: p.spec_data,
+        price: p.price,
+        datasheet_url: p.datasheet_url,
+        image_url: p.image_url,
+        remarks: p.remarks
+      });
+      showMessage('添加成功（本地模式）', 'success');
+    } else {
+      const idx = state.products.findIndex(x => x.id === p.id);
+      if (idx >= 0) {
+        state.products[idx] = {
+          id: p.id,
+          category: p.category,
+          kind: p.kind,
+          model: p.model,
+          manufacturer: p.manufacturer,
+          spec_data: p.spec_data,
+          price: p.price,
+          datasheet_url: p.datasheet_url,
+          image_url: p.image_url,
+          remarks: p.remarks
+        };
+        showMessage('更新成功（本地模式）', 'success');
+      } else {
+        showMessage('未找到要更新的产品', 'error');
+        return;
+      }
+    }
+    state.modal = null;
+    render();
+    return;
+  }
+
+  const payload = {
+    category: p.category,
+    kind: p.kind,
+    model: p.model,
+    manufacturer: p.manufacturer,
+    spec_data: p.spec_data,
+    price: p.price,
+    datasheet_url: p.datasheet_url,
+    image_url: p.image_url,
+    remarks: p.remarks
+  };
+  try {
+    if (state.modal.mode === 'add') {
+      const { error } = await _supabaseClient.from('products').insert(payload);
+      if (error) throw error;
+      showMessage('添加成功', 'success');
+    } else {
+      const { error } = await _supabaseClient.from('products').update(payload).eq('id', p.id);
+      if (error) throw error;
+      showMessage('更新成功', 'success');
+    }
+    state.modal = null;
+    await loadData();
+  } catch (e) {
+    showMessage('保存失败：' + e.message, 'error');
+  }
+}
+async function deleteProduct(id) {
+  if (!confirm('确定删除这条产品？')) return;
+  if (state.readOnly) {
+    showMessage('当前为只读模式，无法删除', 'error');
+    return;
+  }
+
+  if (!SUPABASE_URL || !SUPABASE_KEY || !_supabaseClient) {
+    state.products = state.products.filter(x => x.id !== id);
+    showMessage('删除成功（本地模式）', 'success');
+    render();
+    return;
+  }
+
+  try {
+    const { error } = await _supabaseClient.from('products').delete().eq('id', id);
+    if (error) throw error;
+    showMessage('删除成功', 'success');
+    await loadData();
+  } catch (e) {
+    showMessage('删除失败：' + e.message, 'error');
+  }
+}
+
+// ==================== 渲染 ====================
+function render() {
+  const app = document.getElementById('app');
+  if (!state.loggedIn) {
+    app.innerHTML = renderLogin();
+    return;
+  }
+  app.innerHTML = renderAdmin();
+  bindAdminEvents();
+}
+
+function renderLogin() {
+  return `
+    <div class="login-box">
+      <h2>OKAYLIGHT LED 后台管理</h2>
+      ${state.message ? `<div class="error-msg">${state.message}</div>` : ''}
+      <input type="password" id="pwd" placeholder="请输入密码" onkeydown="if(event.key==='Enter') login()">
+      <button class="btn btn-primary" onclick="login()">登录</button>
+    </div>
+  `;
+}
+
+function renderAdmin() {
+  return `
+    <div class="wrap">
+      <header>
+        <div>
+          <h1>OKAYLIGHT LED 参数筛选器 - 后台管理</h1>
+          <p>管理 发光二极管/LED、UVLED、COB光源、红外发射管、光电晶体管、红外接收头、光电二极管、激光二极管、RGB LED 型号与参数</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-default" onclick="openUploadModal()">表格批量上传</button>
+          <button class="btn btn-default" onclick="logout()">退出登录</button>
+        </div>
+      </header>
+      ${state.message ? `<div class="status-tip ${state.messageType}">${state.message}</div>` : ''}
+      <div class="cat-bar">
+        ${state.categories.map(cat => {
+          const active = cat.id === state.currentCategoryId ? 'active' : '';
+          return `<button class="cat-btn ${active}" data-id="${cat.id}">${cat.display_name}</button>`;
+        }).join('')}
+      </div>
+      <div class="panel">
+        ${state.loading ? '<div class="loading">正在加载数据...</div>' : renderKindPanel()}
+      </div>
+    </div>
+    ${state.modal ? renderModal() : ''}
+    ${state.uploadModal ? renderUploadModal() : ''}
+  `;
+}
+
+function renderKindPanel() {
+  const kinds = getKinds();
+  const kind = getCurrentKind();
+  if (!kind) return '<div class="empty-state">当前分类没有配置子类型</div>';
+  const products = getFilteredProducts();
+  return `
+    <div class="toolbar">
+      <div><strong>${kind.name}</strong>（共 ${products.length} 条）</div>
+      <button class="btn btn-primary" onclick="openAddModal()">+ 添加型号</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>ID</th><th>型号</th><th>制造商</th>${kind.filters.map(f => `<th>${escapeHtml(f.name)}</th>`).join('')}<th>参考价格</th><th>数据手册</th><th>备注</th><th>操作</th></tr>
+        </thead>
+        <tbody>
+          ${products.length ? products.map(p => `
+            <tr>
+              <td>${p.id}</td>
+              <td><div style="display:flex;align-items:center;gap:6px;">${p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="" style="width:36px;height:36px;object-fit:cover;border-radius:4px;border:1px solid #e0e0e0;cursor:pointer;" onclick="window.open('${escapeHtml(p.image_url)}','_blank')" onerror="this.style.display='none'">` : ''}<span>${escapeHtml(p.model)}</span></div></td>
+              <td>${escapeHtml(p.manufacturer)}</td>
+              ${kind.filters.map(f => `<td>${escapeHtml(p.spec_data?.[f.key] || '-')}</td>`).join('')}
+              <td>${escapeHtml(p.price || '-')}</td>
+              <td>${p.datasheet_url ? `<a href="${escapeHtml(p.datasheet_url)}" target="_blank">链接</a>` : '-'}</td><td>${escapeHtml(p.remarks || '-')}</td>
+              <td class="actions">
+                <button class="btn btn-primary" onclick="openEditModal(${JSON.stringify(p).replace(/"/g, '&quot;')})">编辑</button>
+                <button class="btn btn-danger" onclick="deleteProduct(${p.id})">删除</button>
+              </td>
+            </tr>
+          `).join('') : `<tr><td colspan="${4 + kind.filters.length}" class="empty-state">该分类下暂无产品</td></tr>`}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderModal() {
+  const p = state.modal.product;
+  const kind = getCurrentKind();
+  const title = state.modal.mode === 'add' ? '添加型号' : '编辑型号';
+  return `
+    <div class="modal-overlay" onclick="if(event.target===this) closeModal()">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>${title}</h3>
+          <button class="modal-close" onclick="closeModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-row">
+            <div class="form-group">
+              <label>型号 *</label>
+              <input type="text" value="${escapeHtml(p.model)}" oninput="updateProductField('model', this.value)">
+            </div>
+            <div class="form-group">
+              <label>制造商 *</label>
+              <input type="text" value="${escapeHtml(p.manufacturer)}" oninput="updateProductField('manufacturer', this.value)">
+            </div>
+          </div>
+          <div class="form-row">
+            ${kind.filters.map(f => `
+              <div class="form-group">
+                <label>${escapeHtml(f.name)}</label>
+                <input type="text" value="${escapeHtml(p.spec_data?.[f.key] || '')}" oninput="updateSpecField('${f.key}', this.value)">
+              </div>
+            `).join('')}
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>参考价格</label>
+              <input type="text" value="${escapeHtml(p.price)}" oninput="updateProductField('price', this.value)">
+            </div>
+            <div class="form-group">
+              <label>数据手册链接</label>
+              <input type="text" value="${escapeHtml(p.datasheet_url)}" oninput="updateProductField('datasheet_url', this.value)">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group full">
+              <label>产品图片链接（外链 URL，留空则不显示图片）</label>
+              <input type="text" value="${escapeHtml(p.image_url || '')}" oninput="updateProductField('image_url', this.value)" placeholder="https://example.com/product.jpg">
+              ${p.image_url ? `<img src="${escapeHtml(p.image_url)}" alt="预览" style="margin-top:8px;max-width:140px;max-height:140px;border-radius:6px;border:1px solid #e0e0e0;" onerror="this.outerHTML='<span style=&quot;color:#999;font-size:12px;&quot;>图片链接无效</span>'">` : '<div style="margin-top:8px;color:#999;font-size:12px;">未设置图片</div>'}
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group full">
+              <label>备注</label>
+              <textarea rows="2" oninput="updateProductField('remarks', this.value)" placeholder="可选备注信息">${escapeHtml(p.remarks || '')}</textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-default" onclick="closeModal()">取消</button>
+          <button class="btn btn-primary" onclick="saveProduct()">保存</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function bindAdminEvents() {
+  document.querySelectorAll('.cat-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      state.currentCategoryId = btn.dataset.id;
+      initCategoryAndKind();
+      render();
+    });
+  });
+}
+
+function escapeHtml(text) {
+  if (text === null || text === undefined) return '';
+  const div = document.createElement('div');
+  div.textContent = String(text);
+  return div.innerHTML;
+}
+
+// ==================== 表格批量上传 ====================
+function openUploadModal() {
+  state.uploadModal = true;
+  state.uploadCategory = state.currentCategoryId || (state.categories[0] && state.categories[0].id) || '';
+  state.uploadPreview = [];
+  state.uploadFileName = '';
+  render();
+}
+
+function closeUploadModal() {
+  state.uploadModal = null;
+  state.uploadPreview = [];
+  state.uploadFileName = '';
+  render();
+}
+
+function getCatFilters(catId) {
+  const cat = state.categories.find(c => c.id === catId);
+  if (!cat) return [];
+  const kinds = cat.kinds_config && cat.kinds_config.kinds ? cat.kinds_config.kinds : [];
+  const kind = kinds[0] || { filters: [] };
+  return kind.filters || [];
+}
+
+function downloadTemplate() {
+  const catId = state.uploadCategory;
+  if (!catId) { showMessage('请先选择子类型', 'error'); return; }
+  const filters = getCatFilters(catId);
+  const headers = ['型号', '制造商', '参考价格', '图片URL', '数据手册URL', '备注'].concat(filters.map(f => f.name));
+  const csv = '﻿' + headers.join(',') + '\n';
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'OKAYLIGHT_' + catId + '_上传模板.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showMessage('模板已下载，请按表头填写后上传', 'success');
+}
+
+function parseCsv(text) {
+  const rows = [];
+  let row = [];
+  let field = '';
+  let inQuotes = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') { field += '"'; i++; } else { inQuotes = false; }
+      } else { field += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === '\r') { /* ignore */ }
+      else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else { field += ch; }
+    }
+  }
+  if (field !== '' || row.length) { row.push(field); rows.push(row); }
+  return rows.filter(r => r.some(c => (c || '').trim() !== ''));
+}
+
+function buildProductFromRow(row, headers, catId) {
+  const filters = getCatFilters(catId);
+  const get = (cn) => {
+    const idx = headers.indexOf(cn);
+    return idx >= 0 ? (row[idx] || '').trim() : '';
+  };
+  const spec_data = {};
+  filters.forEach(f => {
+    const v = get(f.name);
+    if (v) spec_data[f.key] = v;
+  });
+  return {
+    category: catId,
+    kind: 'default',
+    model: get('型号'),
+    manufacturer: get('制造商'),
+    price: get('参考价格'),
+    image_url: get('图片URL'),
+    datasheet_url: get('数据手册URL'),
+    remarks: get('备注'),
+    spec_data
+  };
+}
+
+function onCsvFile(e) {
+  const file = e.target.files && e.target.files[0];
+  if (!file) return;
+  state.uploadFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = () => {
+    const raw = String(reader.result).replace(/^﻿/, '');
+    const rows = parseCsv(raw);
+    if (rows.length < 2) { showMessage('文件没有可解析的数据行', 'error'); return; }
+    const headers = rows[0].map(h => (h || '').trim());
+    const products = rows.slice(1).map(r => buildProductFromRow(r, headers, state.uploadCategory));
+    state.uploadPreview = products;
+    const valid = products.filter(p => p.model && p.manufacturer).length;
+    showMessage('已解析 ' + products.length + ' 条，其中 ' + valid + ' 条含型号和制造商', 'info');
+    render();
+  };
+  reader.onerror = () => { showMessage('文件读取失败', 'error'); };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function confirmUpload() {
+  if (!state.uploadPreview.length) { showMessage('没有可上传的数据', 'error'); return; }
+  if (state.readOnly) { showMessage('当前为只读模式，无法上传', 'error'); return; }
+  const invalid = state.uploadPreview.filter(p => !p.model || !p.manufacturer);
+  if (invalid.length) { showMessage('有 ' + invalid.length + ' 行缺少型号或制造商，请检查后重试', 'error'); return; }
+
+  if (!_supabaseClient) {
+    let maxId = state.products.length ? Math.max.apply(null, state.products.map(x => x.id || 0)) : 0;
+    state.uploadPreview.forEach(p => { maxId++; state.products.push(Object.assign({ id: maxId }, p)); });
+    showMessage('成功添加 ' + state.uploadPreview.length + ' 条（本地模式）', 'success');
+    closeUploadModal();
+    render();
+    return;
+  }
+  try {
+    const payloads = state.uploadPreview.map(p => ({
+      category: p.category,
+      kind: p.kind,
+      model: p.model,
+      manufacturer: p.manufacturer,
+      spec_data: p.spec_data,
+      price: p.price,
+      image_url: p.image_url,
+      datasheet_url: p.datasheet_url,
+      remarks: p.remarks
+    }));
+    const { error } = await _supabaseClient.from('products').insert(payloads);
+    if (error) throw error;
+    showMessage('成功上传 ' + payloads.length + ' 条产品', 'success');
+    closeUploadModal();
+    await loadData();
+  } catch (e) {
+    showMessage('上传失败：' + (e.message || JSON.stringify(e)), 'error');
+  }
+}
+
+function renderUploadModal() {
+  const cats = state.categories;
+  const preview = state.uploadPreview.slice(0, 8);
+  return `
+    <div class="modal-overlay" onclick="if(event.target===this) closeUploadModal()">
+      <div class="modal upload-modal">
+        <div class="modal-header">
+          <h3>表格批量上传产品</h3>
+          <button class="modal-close" onclick="closeUploadModal()">×</button>
+        </div>
+        <div class="modal-body">
+          <div class="upload-tip">
+            1. 先选择子类型，点 <code>下载模板</code> 获取 CSV 表头；<br>
+            2. 在表格中按列填写产品参数（不需要的列留空即可）；<br>
+            3. 选好填好的 CSV 文件，确认下方预览无误后点 <code>确认上传</code>。<br>
+            注意：CSV 首行必须是表头（中文列名），文件编码 UTF-8。
+          </div>
+          <div class="upload-controls">
+            <select id="uploadCat" onchange="state.uploadCategory=this.value; state.uploadPreview=[]; render()">
+              ${cats.map(c => `<option value="${c.id}" ${c.id === state.uploadCategory ? 'selected' : ''}>${escapeHtml(c.display_name)}</option>`).join('')}
+            </select>
+            <button class="btn btn-default" onclick="downloadTemplate()">下载模板</button>
+            <label class="btn btn-primary" style="margin:0;cursor:pointer;">
+              选择 CSV 文件
+              <input type="file" accept=".csv,text/csv" style="display:none;" onchange="onCsvFile(event)">
+            </label>
+            ${state.uploadFileName ? `<span class="file-name">已选：${escapeHtml(state.uploadFileName)}</span>` : ''}
+            ${state.uploadPreview.length ? `<span class="preview-count">已解析 ${state.uploadPreview.length} 条</span>` : ''}
+          </div>
+          ${preview.length ? `
+            <div class="preview-wrap">
+              <table>
+                <thead><tr><th>型号</th><th>制造商</th><th>参考价格</th><th>参数数</th><th>备注</th></tr></thead>
+                <tbody>
+                  ${preview.map(p => `<tr><td>${escapeHtml(p.model)}</td><td>${escapeHtml(p.manufacturer)}</td><td>${escapeHtml(p.price)}</td><td>${Object.keys(p.spec_data).length}</td><td>${escapeHtml(p.remarks)}</td></tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+            ${state.uploadPreview.length > preview.length ? `<div class="preview-count">… 仅显示前 ${preview.length} 条，共 ${state.uploadPreview.length} 条</div>` : ''}
+          ` : ''}
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-default" onclick="closeUploadModal()">取消</button>
+          <button class="btn btn-primary" onclick="confirmUpload()" ${state.uploadPreview.length ? '' : 'disabled'}>确认上传</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+init();
+</script>
+</body>
+</html>
