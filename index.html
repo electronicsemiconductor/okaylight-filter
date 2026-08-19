@@ -245,6 +245,28 @@
       .results-table { font-size: 12px; }
       .results-table th, .results-table td { padding: 8px 6px; }
     }
+    /* 级联联动：禁用（无结果）的筛选项 */
+    .filter-option.disabled { opacity: 0.35; pointer-events: none; }
+    .filter-option.disabled input { cursor: not-allowed; }
+    /* 分页 */
+    .pagination {
+      display: flex; justify-content: center; align-items: center;
+      gap: 6px; margin-top: 16px; padding-top: 12px;
+      border-top: 1px solid #eee; flex-wrap: wrap;
+    }
+    .pagination button {
+      padding: 5px 12px; border: 1px solid #d9d9d9; border-radius: 4px;
+      background: #fff; color: #555; cursor: pointer; font-size: 13px;
+      transition: all 0.15s;
+    }
+    .pagination button:hover:not(:disabled) { border-color: #1890ff; color: #1890ff; }
+    .pagination button.active { background: #1890ff; color: #fff; border-color: #1890ff; }
+    .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .pagination .page-info { font-size: 13px; color: #888; margin: 0 8px; }
+    .pagination .page-sizer select {
+      padding: 4px 8px; border: 1px solid #d9d9d9; border-radius: 4px;
+      font-size: 13px; color: #555; cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -770,7 +792,9 @@ let appState = {
   selectedFilters: {},
   searchTerms: {},
   loading: true,
-  error: null
+  error: null,
+  currentPage: 1,
+  pageSize: 20,
 };
 
 // ==================== 初始化 ====================
@@ -864,6 +888,7 @@ function initCategoryAndKind() {
   appState.currentKindKey = kinds.length ? kinds[0].key : '';
   appState.selectedFilters = {};
   appState.searchTerms = {};
+  appState.currentPage = 1;
 }
 
 function getCategory() {
@@ -927,6 +952,7 @@ function renderFilters() {
   html += `<div class="filter-row">`;
   currentKind.filters.forEach(filter => {
     const options = getFilterOptions(filter.key);
+    const availableSet = getAvailableOptionSet(filter.key);
     const selected = appState.selectedFilters[filter.key] || new Set();
     const searchTerm = appState.searchTerms[filter.key] || '';
     const filteredOptions = options.filter(o => o.toLowerCase().includes(searchTerm.toLowerCase()));
@@ -939,12 +965,15 @@ function renderFilters() {
         </div>
         <input type="text" class="filter-search" placeholder="搜索..." data-key="${filter.key}" value="${escapeHtml(searchTerm)}">
         <div class="filter-options">
-          ${filteredOptions.map(opt => `
-            <label class="filter-option">
-              <input type="checkbox" data-key="${filter.key}" value="${escapeHtml(opt)}" ${selected.has(opt) ? 'checked' : ''}>
+          ${filteredOptions.map(opt => {
+            const isAvail = availableSet.has(opt);
+            const isSel = selected.has(opt);
+            return `
+            <label class="filter-option ${(!isAvail && !isSel) ? 'disabled' : ''}">
+              <input type="checkbox" data-key="${filter.key}" value="${escapeHtml(opt)}" ${isSel ? 'checked' : ''} ${(!isAvail && !isSel) ? 'disabled' : ''}>
               <span>${escapeHtml(opt)}</span>
-            </label>
-          `).join('')}
+            </label>`;
+          }).join('')}
         </div>
       </div>
     `;
@@ -960,6 +989,7 @@ function renderFilters() {
       if (!appState.selectedFilters[key]) appState.selectedFilters[key] = new Set();
       if (cb.checked) appState.selectedFilters[key].add(val);
       else appState.selectedFilters[key].delete(val);
+      appState.currentPage = 1;
       renderResults();
     });
   });
@@ -980,13 +1010,52 @@ function renderFilters() {
 }
 
 function getFilterOptions(filterKey) {
-  const products = appState.products.filter(p => p.category === appState.currentCategoryId && p.kind === appState.currentKindKey);
+  // 级联联动：基于"其他筛选项的当前选中值"计算可用选项
+  const baseProducts = appState.products.filter(p =>
+    p.category === appState.currentCategoryId && p.kind === appState.currentKindKey
+  );
+  // 先应用其他筛选条件的过滤
+  let filtered = baseProducts;
+  Object.keys(appState.selectedFilters).forEach(key => {
+    if (key === filterKey) return; // 跳过当前筛选项自身
+    const selected = appState.selectedFilters[key];
+    if (selected && selected.size) {
+      filtered = filtered.filter(p => {
+        const v = p.spec_data?.[key];
+        return v !== undefined && selected.has(String(v));
+      });
+    }
+  });
   const values = new Set();
-  products.forEach(p => {
+  filtered.forEach(p => {
     const v = p.spec_data?.[filterKey];
     if (v !== undefined && v !== null && v !== '') values.add(String(v));
   });
   return Array.from(values).sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+}
+
+// 获取某个选项在级联下是否可用（用于灰掉）
+function getAvailableOptionSet(filterKey) {
+  const baseProducts = appState.products.filter(p =>
+    p.category === appState.currentCategoryId && p.kind === appState.currentKindKey
+  );
+  let filtered = baseProducts;
+  Object.keys(appState.selectedFilters).forEach(key => {
+    if (key === filterKey) return;
+    const selected = appState.selectedFilters[key];
+    if (selected && selected.size) {
+      filtered = filtered.filter(p => {
+        const v = p.spec_data?.[key];
+        return v !== undefined && selected.has(String(v));
+      });
+    }
+  });
+  const available = new Set();
+  filtered.forEach(p => {
+    const v = p.spec_data?.[filterKey];
+    if (v !== undefined && v !== null && v !== '') available.add(String(v));
+  });
+  return available;
 }
 
 function renderResults() {
@@ -1012,10 +1081,25 @@ function renderResults() {
   });
 
   const count = products.length;
+  const pageSize = appState.pageSize;
+  const totalPages = Math.ceil(count / pageSize);
+  // 页码越界保护
+  if (appState.currentPage > totalPages) appState.currentPage = Math.max(1, totalPages);
+  if (appState.currentPage < 1) appState.currentPage = 1;
+  const startIdx = (appState.currentPage - 1) * pageSize;
+  const pageProducts = products.slice(startIdx, startIdx + pageSize);
+
   let html = `
     <div class="results-bar">
       <div class="results-count">共 <strong>${count}</strong> 个型号匹配</div>
-      <div class="clear-all" id="clearAll">清空全部筛选</div>
+      <div style="display:flex;align-items:center;gap:12px;">
+        <span style="font-size:13px;color:#888;">每页</span>
+        <select onchange="appState.pageSize=Number(this.value);appState.currentPage=1;renderResults();">
+          ${[20, 50, 100].map(s => `<option value="${s}" ${pageSize === s ? 'selected' : ''}>${s}</option>`).join('')}
+        </select>
+        <span style="font-size:13px;color:#888;">条</span>
+        <div class="clear-all" id="clearAll" style="margin-left:8px;">清空全部筛选</div>
+      </div>
     </div>
   `;
 
@@ -1029,7 +1113,7 @@ function renderResults() {
     });
     html += `<th>参考价格</th><th>数据手册</th><th>备注</th></tr></thead><tbody>`;
 
-    products.forEach(p => {
+    pageProducts.forEach(p => {
       const thumbHtml = p.image_url
         ? `<img class="thumb" data-img="${escapeHtml(p.image_url)}" src="${escapeHtml(p.image_url)}" alt="${escapeHtml(p.model)}" onerror="this.outerHTML='<div class=&quot;thumb-placeholder&quot;>📷</div>'">`
         : `<div class="thumb-placeholder">📷</div>`;
@@ -1048,12 +1132,30 @@ function renderResults() {
       html += `</tr>`;
     });
     html += `</tbody></table></div>`;
+
+    // 分页控件
+    if (totalPages > 1) {
+      html += `<div class="pagination">`;
+      html += `<button onclick="goToPage(1)" ${appState.currentPage === 1 ? 'disabled' : ''}>首页</button>`;
+      html += `<button onclick="goToPage(${appState.currentPage - 1})" ${appState.currentPage === 1 ? 'disabled' : ''}>‹ 上一页</button>`;
+      // 页码按钮（最多显示 7 个）
+      const startPage = Math.max(1, appState.currentPage - 3);
+      const endPage = Math.min(totalPages, startPage + 6);
+      for (let i = startPage; i <= endPage; i++) {
+        html += `<button class="${i === appState.currentPage ? 'active' : ''}" onclick="goToPage(${i})">${i}</button>`;
+      }
+      html += `<button onclick="goToPage(${appState.currentPage + 1})" ${appState.currentPage === totalPages ? 'disabled' : ''}>下一页 ›</button>`;
+      html += `<button onclick="goToPage(${totalPages})" ${appState.currentPage === totalPages ? 'disabled' : ''}>末页</button>`;
+      html += `<span class="page-info">${startIdx + 1}-${Math.min(startIdx + pageSize, count)} / ${count}</span>`;
+      html += `</div>`;
+    }
   }
 
   panel.innerHTML = html;
   document.getElementById('clearAll').addEventListener('click', () => {
     appState.selectedFilters = {};
     appState.searchTerms = {};
+    appState.currentPage = 1;
     renderAll();
   });
   panel.querySelectorAll('.thumb').forEach(img => {
@@ -1062,6 +1164,14 @@ function renderResults() {
       openLightbox(img.dataset.img);
     });
   });
+}
+
+function goToPage(page) {
+  appState.currentPage = page;
+  renderResults();
+  // 滚动到结果区域顶部
+  const resultsEl = document.getElementById('results');
+  if (resultsEl) resultsEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function openLightbox(url) {
