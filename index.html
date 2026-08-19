@@ -960,7 +960,7 @@ function renderFilters() {
     const filteredOptions = options.filter(o => o.toLowerCase().includes(searchTerm.toLowerCase()));
 
     html += `
-      <div class="filter-section">
+      <div class="filter-section" data-key="${filter.key}">
         <div class="filter-title">
           <span>${filter.name}</span>
           <span class="reset" data-key="${filter.key}">重置</span>
@@ -992,6 +992,7 @@ function renderFilters() {
       if (cb.checked) appState.selectedFilters[key].add(val);
       else appState.selectedFilters[key].delete(val);
       appState.currentPage = 1;
+      updateCascadeStates();
       renderResults();
     });
   });
@@ -1012,24 +1013,12 @@ function renderFilters() {
 }
 
 function getFilterOptions(filterKey) {
-  // 级联联动：基于"其他筛选项的当前选中值"计算可用选项
+  // 返回该列在当前子类型下的全部可能值（完整选项；级联可用性由 getAvailableOptionSet 决定）
   const baseProducts = appState.products.filter(p =>
     p.category === appState.currentCategoryId && p.kind === appState.currentKindKey
   );
-  // 先应用其他筛选条件的过滤
-  let filtered = baseProducts;
-  Object.keys(appState.selectedFilters).forEach(key => {
-    if (key === filterKey) return; // 跳过当前筛选项自身
-    const selected = appState.selectedFilters[key];
-    if (selected && selected.size) {
-      filtered = filtered.filter(p => {
-        const v = p.spec_data?.[key];
-        return v !== undefined && selected.has(String(v));
-      });
-    }
-  });
   const values = new Set();
-  filtered.forEach(p => {
+  baseProducts.forEach(p => {
     const v = p.spec_data?.[filterKey];
     if (v !== undefined && v !== null && v !== '') values.add(String(v));
   });
@@ -1058,6 +1047,29 @@ function getAvailableOptionSet(filterKey) {
     if (v !== undefined && v !== null && v !== '') available.add(String(v));
   });
   return available;
+}
+
+// 级联联动：仅更新各选项的禁用(灰掉)状态，不重建面板（避免搜索框失焦）
+function updateCascadeStates() {
+  const panel = document.getElementById('filters');
+  if (!panel) return;
+  panel.querySelectorAll('.filter-section').forEach(sec => {
+    const key = sec.dataset.key;
+    const availableSet = getAvailableOptionSet(key);
+    sec.querySelectorAll('.filter-option').forEach(opt => {
+      const cb = opt.querySelector('input');
+      if (!cb) return;
+      const isSel = cb.checked;
+      const isAvail = availableSet.has(cb.value);
+      if (!isAvail && !isSel) {
+        opt.classList.add('disabled');
+        cb.disabled = true;
+      } else {
+        opt.classList.remove('disabled');
+        cb.disabled = false;
+      }
+    });
+  });
 }
 
 function renderResults() {
